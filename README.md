@@ -1,6 +1,6 @@
 # Quite Noise
 
-A simple noise generator for sleeping. Live at https://matthettich.github.io/Quite-Noise/
+A simple noise generator for sleeping. Live at https://matthettich.github.io/QuiteNoise/
 
 - Nine noise types, generated live so nothing ever loops: white, pink, brown, deep red, grey, blue, violet, ocean, rain
 - Low pass filter (24 dB/oct), low cut, and a 5-band EQ with a live response curve
