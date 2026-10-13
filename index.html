@@ -269,7 +269,7 @@ function setMeta(){if(!('mediaSession'in navigator))return;const t=TYPES.find(x=
   try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name+' noise',artist:'Quite Noise',artwork:[{src:'icon-512.png',sizes:'512x512',type:'image/png'}]});
   navigator.mediaSession.setActionHandler('play',start);navigator.mediaSession.setActionHandler('pause',()=>stop());}catch(e){}}
 
-const OPTS=[0,15,30,60,90,120];let timerMin=store.get('timer',0),endAt=0,tick=null;
+const OPTS=[0,15,30,60,90,480];let timerMin=OPTS.includes(store.get('timer',0))?store.get('timer',0):0,endAt=0,tick=null;
 const optLabel=m=>!m?'Off':m<60||m===90?m+' min':m/60+(m===60?' hour':' hours');
 OPTS.forEach(m=>{const b=document.createElement('button');b.className='chip';b.textContent=optLabel(m);b.dataset.m=m;
   b.onclick=()=>{timerMin=m;store.set('timer',m);marks();if(playing){m?armTimer():clearTimer(true)}else showTimer()};$('timer').append(b)});
