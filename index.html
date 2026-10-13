@@ -212,7 +212,10 @@ $('hp').oninput=e=>{state.hp=+e.target.value;store.set('hp',state.hp);applyFilte
 BANDS.forEach((b,i)=>{const d=document.createElement('div');d.className='band';
   d.innerHTML=`<span class="v" id="eqv${i}"></span><input type="range" id="eq${i}" min="-12" max="12" step="0.5" aria-label="${b.l} Hz"><span class="f">${b.l}</span>`;
   $('eq').append(d);const inp=d.querySelector('input');inp.value=state.eq[i];
-  inp.oninput=()=>{state.eq[i]=+inp.value;store.set('eq',state.eq);applyEq()};});
+  inp.oninput=()=>{state.eq[i]=+inp.value;store.set('eq',state.eq);applyEq()};
+  // Double tap a band (slider or its number) to reset it to 0
+  let lastTap=0;d.addEventListener('pointerup',()=>{const now=Date.now();
+    if(now-lastTap<320){inp.value=0;state.eq[i]=0;store.set('eq',state.eq);applyEq();lastTap=0}else lastTap=now});});
 function applyEq(){eqs.forEach((f,i)=>{setP(f.gain,state.eq[i]);
   const v=state.eq[i];$('eqv'+i).textContent=(v>0?'+':'')+v;});redrawCurve();}
 $('flat').onclick=()=>{state.eq=[0,0,0,0,0];store.set('eq',state.eq);BANDS.forEach((_,i)=>$('eq'+i).value=0);applyEq()};
