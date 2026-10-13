@@ -138,9 +138,9 @@ class Noise extends AudioWorkletProcessor{
           case'white':y=w*.35;break;
           case'pink':y=pink*.9;break;
           case'brown':y=brown;break;
-          case'deep':s.br2+=.02*(brown-s.br2);y=s.br2*3.2;break;
+          case'deep':s.br2+=.02*(brown-s.br2);y=s.br2*1.9;break;
           case'grey':s.g1+=.25*(w-s.g1);y=brown*.75+pink*.35+(w-s.g1)*.12;break;
-          case'blue':y=(pink-s.lp)*.6;break;
+          case'blue':y=(pink-s.lp)*1.5;break;
           case'violet':y=(w-s.lw)*.22;break;
           case'ocean':y=brown*env+pink*.25*env*env;break;
           case'rain':if(hit&&this.rnd()<(c?-.2:.2)){s.drop=.15+(this.rnd()+1)*.175;s.dropF=.3+(this.rnd()+1)*.25}
