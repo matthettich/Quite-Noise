@@ -11,93 +11,97 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
 <style>
-/* Layout: one column of flat, square-cornered white panels, each marked by its own outlined pastel shape — Daily meds style */
+/* Layout: one column of boxes — 3px black frame, white title bar, pastel body — matching Daily meds */
 :root{
   color-scheme:light;
-  --bg:#ffffff; --panel:#ffffff; --line:#e2e3e8; --fg:#262932; --muted:#7c808c;
-  --lav:#b9a7f0; --mint:#95d9bf; --peach:#f5b698; --sky:#99c8f0; --butter:#f0d47e; --rose:#f0a9c1;
-  --accent:var(--rose);
-  --font:Futura,"Futura PT","Jost","Century Gothic",Avenir,"Trebuchet MS",sans-serif;
+  --ink:#111111; --muted:#4A4A4A; --rule:#111111; --hair:rgba(17,17,17,.16); --white:#FFFFFF;
+  --p-sound:hsl(262 70% 90%); --p-shape:hsl(338 80% 91%); --p-eq:hsl(176 55% 87%); --p-sleep:hsl(44 75% 87%);
+  --u1:hsl(262 70% 81%); --u2:hsl(338 80% 81%);
+  --font:Futura,"Futura PT","Jost","Century Gothic",system-ui,sans-serif;
 }
-*{box-sizing:border-box}
-html{background:var(--bg);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;padding-inline:16px;padding-block:22px 40px}
-.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-h1{font-size:1.75rem;font-weight:500;letter-spacing:.02em;margin:0;padding-block:2px 6px;border-bottom:2px solid var(--accent);align-self:flex-start;transition:border-color .3s}
-.panel{background:var(--panel);border:1.5px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:14px}
-.head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.label{display:flex;align-items:center;gap:8px;font-size:.74rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:500}
-.label svg{flex:none}
-.row{display:flex;align-items:center;gap:14px}
+*,*::before,*::after{box-sizing:border-box;border-radius:0}
+html{background:var(--white);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--white);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.4;
+  padding-inline:12px;padding-block:18px 32px;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:28px;line-height:1.1;margin:4px 0 2px;font-weight:500;letter-spacing:-.01em}
+h1 span{background-repeat:no-repeat;background-size:100% .36em;background-position:0 88%;padding:0 .04em}
+h1 .a{background-image:linear-gradient(var(--u1),var(--u1))}
+h1 .b{background-image:linear-gradient(var(--u2),var(--u2))}
+.box{border:3px solid var(--rule);background:var(--pc)}
+.box.sound{--pc:var(--p-sound)} .box.shape{--pc:var(--p-shape)} .box.eqb{--pc:var(--p-eq)} .box.sleep{--pc:var(--p-sleep)}
+.lid{display:flex;align-items:center;gap:8px;min-height:38px;padding:0 10px;background:var(--white);border-bottom:3px solid var(--rule);font-weight:500;font-size:17px}
+.lid h2{margin:0;font:inherit}
+.lid .st{margin-left:auto;font-size:13px;font-weight:400;font-variant-numeric:tabular-nums}
+.body{padding:14px 12px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:stretch;gap:12px}
 .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
-select{width:100%;font:inherit;font-size:1.1rem;color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:0;padding:10px 12px}
-select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.note{color:var(--muted);font-size:.92rem;margin:0;min-height:2.6em}
-.play{flex:none;width:76px;height:76px;border:2px solid var(--accent);background:transparent;color:var(--fg);cursor:pointer;display:grid;place-items:center;transition:background .2s,border-color .3s}
-.play[data-on="true"]{background:color-mix(in srgb,var(--accent) 22%,transparent)}
-.play svg{width:28px;height:28px}
-canvas{width:100%;height:150px;display:block;border:1.5px solid var(--line)}
-.ctl{display:grid;grid-template-columns:5.5rem 1fr 4.8rem;align-items:center;gap:10px}
-.ctl>span:first-child{font-size:.74rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
-.ctl>span:last-child{text-align:right;font-variant-numeric:tabular-nums;font-size:.95rem}
-input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;border:1px solid var(--rule);background:var(--white);
+  padding:8px 34px 8px 10px;font-size:17px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23111' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.note{color:var(--muted);font-size:14px;margin:0;min-height:2.8em}
+.play{flex:none;width:76px;min-height:76px;border:3px solid var(--rule);background:var(--white);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.play[data-on="true"]{background:var(--ink);color:var(--white)}
+.play svg{width:26px;height:26px}
+canvas{width:100%;height:150px;display:block;border:1px solid var(--rule);background:var(--white)}
+.ctl{display:grid;grid-template-columns:5.6rem 1fr 4.6rem;align-items:center;gap:10px}
+.ctl>span:first-child{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.ctl>span:last-child{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;border:1px solid var(--rule);background:var(--white);padding:2px 6px}
+input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 .eq{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;justify-items:center}
 .band{display:flex;flex-direction:column;align-items:center;gap:6px}
 .band input{writing-mode:vertical-lr;direction:rtl;width:28px;height:150px}
-.band .v{font-variant-numeric:tabular-nums;font-size:.85rem}
-.band .f{font-size:.75rem;color:var(--muted);letter-spacing:.06em}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{font:inherit;font-size:.95rem;color:var(--fg);background:transparent;border:1.5px solid var(--line);border-radius:0;padding:7px 14px;cursor:pointer}
-.chip[aria-pressed="true"]{border-color:var(--butter);background:color-mix(in srgb,var(--butter) 30%,transparent)}
-.link{font:inherit;font-size:.85rem;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0}
-.status{font-size:.92rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.band .v{font-variant-numeric:tabular-nums;font-size:13px;border:1px solid var(--rule);background:var(--white);min-width:38px;text-align:center;padding:1px 3px}
+.band .f{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.06em}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border:1px solid var(--rule);background:var(--rule)}
+.chip{min-height:42px;border:0;background:var(--white);padding:6px 8px;font-size:15px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+.lid .link{margin-left:auto;align-self:stretch;border:0;border-left:1px solid var(--rule);margin-right:-10px;background:transparent;font-size:13px;font-weight:500;padding:0 12px;cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <audio id="keep" loop playsinline hidden></audio>
 <div class="wrap">
-  <h1>Quite Noise</h1>
+  <h1><span class="a">Quite</span> <span class="b">Noise</span></h1>
 
-  <section class="panel">
-    <div class="label"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--sky)" stroke-width="2"/></svg>Sound</div>
-    <div class="row">
-      <div class="grow">
-        <select id="type" aria-label="Noise type"></select>
-        <p class="note" id="note"></p>
+  <section class="box sound">
+    <div class="lid"><h2>Sound</h2></div>
+    <div class="body">
+      <div class="row">
+        <div class="grow">
+          <select id="type" aria-label="Noise type"></select>
+          <p class="note" id="note"></p>
+        </div>
+        <button class="play" id="play" aria-label="Play"><svg viewBox="0 0 28 28" id="playIcon"></svg></button>
       </div>
-      <button class="play" id="play" aria-label="Play">
-        <svg viewBox="0 0 28 28" id="playIcon"></svg>
-      </button>
+      <div class="ctl"><span>Volume</span><input type="range" id="vol" min="0" max="100"><span id="volV"></span></div>
     </div>
-    <div class="ctl"><span>Volume</span><input type="range" id="vol" min="0" max="100"><span id="volV"></span></div>
   </section>
 
-  <section class="panel">
-    <div class="head">
-      <div class="label"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1.5 12.8,12 1.2,12" fill="none" stroke="var(--peach)" stroke-width="2" stroke-linejoin="round"/></svg>Shape</div>
-      <span class="status">20 Hz – 20 kHz</span>
+  <section class="box shape">
+    <div class="lid"><h2>Shape</h2><span class="st">20 Hz – 20 kHz</span></div>
+    <div class="body">
+      <canvas id="curve"></canvas>
+      <div class="ctl"><span>Low pass</span><input type="range" id="lp" min="0" max="1000"><span id="lpV"></span></div>
+      <div class="ctl"><span>Low cut</span><input type="range" id="hp" min="0" max="1000"><span id="hpV"></span></div>
     </div>
-    <canvas id="curve"></canvas>
-    <div class="ctl"><span>Low pass</span><input type="range" id="lp" min="0" max="1000"><span id="lpV"></span></div>
-    <div class="ctl"><span>Low cut</span><input type="range" id="hp" min="0" max="1000"><span id="hpV"></span></div>
   </section>
 
-  <section class="panel">
-    <div class="head">
-      <div class="label"><svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" fill="none" stroke="var(--mint)" stroke-width="2"/></svg>EQ</div>
-      <button class="link" id="flat">Reset to flat</button>
-    </div>
-    <div class="eq" id="eq"></div>
+  <section class="box eqb">
+    <div class="lid"><h2>EQ</h2><button class="link" id="flat">Reset</button></div>
+    <div class="body"><div class="eq" id="eq"></div></div>
   </section>
 
-  <section class="panel">
-    <div class="head">
-      <div class="label"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="none" stroke="var(--butter)" stroke-width="2" stroke-linejoin="round"/></svg>Sleep timer</div>
-      <span class="status" id="timerV">Off</span>
+  <section class="box sleep">
+    <div class="lid"><h2>Sleep timer</h2><span class="st" id="timerV">Off</span></div>
+    <div class="body">
+      <div class="chips" id="timer"></div>
+      <p class="note" style="min-height:0">Fades out over the last minute, then stops.</p>
     </div>
-    <div class="chips" id="timer"></div>
-    <p class="note" style="min-height:0">Fades out over the last minute, then stops.</p>
   </section>
 </div>
 
@@ -160,9 +164,9 @@ const lpHz=v=>100*Math.pow(200,v/1000), hpHz=v=>20*Math.pow(30,v/1000);
 const fmt=f=>f>=1000?(f/1000).toFixed(f>=10000?0:1)+' kHz':Math.round(f)+' Hz';
 
 const ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback'});
-const hp=ctx.createBiquadFilter();hp.type='highpass';hp.Q.value=.6;
-const lp1=ctx.createBiquadFilter();lp1.type='lowpass';lp1.Q.value=.54;
-const lp2=ctx.createBiquadFilter();lp2.type='lowpass';lp2.Q.value=1.31;
+const hp=ctx.createBiquadFilter();hp.type='highpass';hp.Q.value=-3.01;
+const lp1=ctx.createBiquadFilter();lp1.type='lowpass';lp1.Q.value=-5.33;
+const lp2=ctx.createBiquadFilter();lp2.type='lowpass';lp2.Q.value=2.33;
 const eqs=BANDS.map(b=>{const f=ctx.createBiquadFilter();f.type=b.t;f.frequency.value=b.f;f.Q.value=.9;return f});
 const master=ctx.createGain();master.gain.value=0;
 const an=ctx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=.85;
@@ -186,20 +190,20 @@ const keep=$('keep');
   keep.src=URL.createObjectURL(new Blob([b],{type:'audio/wav'}));keep.volume=.01;})();
 
 const state={type:store.get('type','pink'),vol:store.get('vol',50),lp:store.get('lp',700),hp:store.get('hp',0),eq:store.get('eq',[0,0,0,0,0])};
-let accentVar='--rose';
 
 TYPES.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;$('type').append(o)});
 function setType(id){const t=TYPES.find(x=>x.id===id)||TYPES[1];state.type=t.id;store.set('type',t.id);$('type').value=t.id;
-  $('note').textContent=t.note;accentVar=t.c;document.documentElement.style.setProperty('--accent',`var(${t.c})`);
+  $('note').textContent=t.note;
   if(src)src.port.postMessage(t.id);setMeta();redrawCurve();}
 $('type').onchange=e=>setType(e.target.value);
 
+// Set right away while audio is paused (so the graph is correct), glide smoothly while playing
+const setP=(p,v)=>ctx.state==='running'?p.setTargetAtTime(v,ctx.currentTime,.03):(p.cancelScheduledValues(0),p.value=v);
 const volGain=()=>Math.pow(state.vol/100,2)*.9;
 function applyVol(){$('volV').textContent=state.vol+'%';if(playing&&!fading)master.gain.setTargetAtTime(volGain(),ctx.currentTime,.05)}
 $('vol').value=state.vol;$('vol').oninput=e=>{state.vol=+e.target.value;store.set('vol',state.vol);applyVol()};
 function applyFilters(){const f=lpHz(state.lp),h=hpHz(state.hp);
-  lp1.frequency.setTargetAtTime(f,ctx.currentTime,.03);lp2.frequency.setTargetAtTime(f,ctx.currentTime,.03);
-  hp.frequency.setTargetAtTime(state.hp<5?10:h,ctx.currentTime,.03);
+  setP(lp1.frequency,f);setP(lp2.frequency,f);setP(hp.frequency,state.hp<5?10:h);
   $('lpV').textContent=state.lp>=995?'Open':fmt(f);$('hpV').textContent=state.hp<5?'Off':fmt(h);redrawCurve();}
 $('lp').value=state.lp;$('hp').value=state.hp;
 $('lp').oninput=e=>{state.lp=+e.target.value;store.set('lp',state.lp);applyFilters()};
@@ -209,7 +213,7 @@ BANDS.forEach((b,i)=>{const d=document.createElement('div');d.className='band';
   d.innerHTML=`<span class="v" id="eqv${i}"></span><input type="range" id="eq${i}" min="-12" max="12" step="0.5" aria-label="${b.l} Hz"><span class="f">${b.l}</span>`;
   $('eq').append(d);const inp=d.querySelector('input');inp.value=state.eq[i];
   inp.oninput=()=>{state.eq[i]=+inp.value;store.set('eq',state.eq);applyEq()};});
-function applyEq(){eqs.forEach((f,i)=>{f.gain.setTargetAtTime(state.eq[i],ctx.currentTime,.03);
+function applyEq(){eqs.forEach((f,i)=>{setP(f.gain,state.eq[i]);
   const v=state.eq[i];$('eqv'+i).textContent=(v>0?'+':'')+v;});redrawCurve();}
 $('flat').onclick=()=>{state.eq=[0,0,0,0,0];store.set('eq',state.eq);BANDS.forEach((_,i)=>$('eq'+i).value=0);applyEq()};
 
@@ -224,7 +228,7 @@ function draw(){
   const r=cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);if(!r.width)return;
   if(cv.width!==Math.round(r.width*dpr)){cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr)}
   const W=cv.width,H=cv.height,cs=getComputedStyle(document.documentElement);
-  const line=cs.getPropertyValue('--line'),muted=cs.getPropertyValue('--muted'),acc=cs.getPropertyValue(accentVar);
+  const line=cs.getPropertyValue('--hair'),muted=cs.getPropertyValue('--muted'),acc=cs.getPropertyValue('--ink'),fillc=cs.getPropertyValue('--u2');
   const pad=4*dpr,yOf=db=>pad+(12-db)/36*(H-2*pad),xOf=f=>Math.log(f/20)/Math.log(1000)*W;
   g.clearRect(0,0,W,H);g.lineWidth=dpr;g.strokeStyle=line;g.fillStyle=muted;g.font=`${10*dpr}px Jost,sans-serif`;
   [100,1000,10000].forEach(f=>{const x=xOf(f);g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();g.fillText(f>=1000?f/1000+'k':f,x+3*dpr,H-5*dpr)});
@@ -233,7 +237,7 @@ function draw(){
   if(playing){an.getFloatFrequencyData(spec);g.beginPath();g.moveTo(0,H);
     for(let x=0;x<=W;x+=3*dpr){const f=20*Math.pow(1000,x/W),bin=Math.min(spec.length-1,Math.round(f/(ctx.sampleRate/2)*spec.length));
       g.lineTo(x,yOf(Math.max(-24,Math.min(12,(spec[bin]+70)*.5))))}
-    g.lineTo(W,H);g.closePath();g.globalAlpha=.25;g.fillStyle=acc;g.fill();g.globalAlpha=1;}
+    g.lineTo(W,H);g.closePath();g.fillStyle=fillc;g.fill();}
   g.beginPath();for(let i=0;i<N;i++){const x=i/(N-1)*W,y=yOf(Math.max(-25,curveDb[i]));i?g.lineTo(x,y):g.moveTo(x,y)}
   g.strokeStyle=acc;g.lineWidth=2*dpr;g.stroke();
 }
@@ -262,7 +266,7 @@ function setMeta(){if(!('mediaSession'in navigator))return;const t=TYPES.find(x=
   try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name+' noise',artist:'Quite Noise',artwork:[{src:'icon-512.png',sizes:'512x512',type:'image/png'}]});
   navigator.mediaSession.setActionHandler('play',start);navigator.mediaSession.setActionHandler('pause',()=>stop());}catch(e){}}
 
-const OPTS=[0,15,30,45,60,90,120];let timerMin=store.get('timer',0),endAt=0,tick=null;
+const OPTS=[0,15,30,60,90,120];let timerMin=store.get('timer',0),endAt=0,tick=null;
 const optLabel=m=>!m?'Off':m<60||m===90?m+' min':m/60+(m===60?' hour':' hours');
 OPTS.forEach(m=>{const b=document.createElement('button');b.className='chip';b.textContent=optLabel(m);b.dataset.m=m;
   b.onclick=()=>{timerMin=m;store.set('timer',m);marks();if(playing){m?armTimer():clearTimer(true)}else showTimer()};$('timer').append(b)});
