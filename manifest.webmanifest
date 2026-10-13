@@ -1,14 +1,18 @@
 {
+  "id": "/Quite-Noise/",
   "name": "Quite Noise",
   "short_name": "Quite Noise",
+  "description": "A simple noise generator for sleeping.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
+  "related_applications": [{"platform": "webapp", "url": "https://matthettich.github.io/Quite-Noise/manifest.webmanifest"}],
   "icons": [
-    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
-    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ]
 }
