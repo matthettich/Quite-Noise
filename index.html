@@ -175,8 +175,16 @@ const lp2=ctx.createBiquadFilter();lp2.type='lowpass';lp2.Q.value=2.33;
 const eqs=BANDS.map(b=>{const f=ctx.createBiquadFilter();f.type=b.t;f.frequency.value=b.f;f.Q.value=.9;return f});
 const master=ctx.createGain();master.gain.value=0;
 const an=ctx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=.85;
-[hp,lp1,lp2,...eqs,master].reduce((a,b)=>(a.connect(b),b));
-master.connect(ctx.destination);master.connect(an);
+// Safety limiter. Noise has random peaks; the deeper types (and EQ boosts at high volume) sometimes went past full
+// scale, and the phone's own speaker limiter would then duck the whole sound for a moment: the "jumping" volume.
+// This soft clip leaves everything below 70% untouched and rounds off only those rare peaks, so the phone never has to.
+// A WaveShaper only reads -1..1, so the signal is halved first and the curve is drawn for a -2..2 input.
+const pre=ctx.createGain();pre.gain.value=.5;
+const soft=ctx.createWaveShaper();soft.curve=(()=>{const n=4097,c=new Float32Array(n),t=.7,top=.98;
+  for(let i=0;i<n;i++){const x=(i/(n-1)*2-1)*2,a=Math.abs(x);
+    c[i]=Math.sign(x)*(a<=t?a:t+(top-t)*Math.tanh((a-t)/(top-t)))}return c})();
+[hp,lp1,lp2,...eqs,master,pre,soft].reduce((a,b)=>(a.connect(b),b));
+soft.connect(ctx.destination);master.connect(an);
 let src=null,playing=false,ready=null;
 
 async function ensureSource(){
@@ -208,7 +216,7 @@ const volGain=()=>Math.pow(state.vol/100,2)*.9;
 function applyVol(){$('volV').textContent=state.vol+'%';if(playing&&!fading)master.gain.setTargetAtTime(volGain(),ctx.currentTime,.05)}
 $('vol').value=state.vol;$('vol').oninput=e=>{state.vol=+e.target.value;store.set('vol',state.vol);applyVol()};
 function applyFilters(){const f=lpHz(state.lp),h=hpHz(state.hp);
-  setP(lp1.frequency,f);setP(lp2.frequency,f);setP(hp.frequency,state.hp<5?10:h);
+  setP(lp1.frequency,f);setP(lp2.frequency,f);setP(hp.frequency,state.hp<5?18:h);/* "Off" still trims the inaudible rumble under 20 Hz, which only eats headroom and makes phone speakers duck */
   $('lpV').textContent=state.lp>=995?'Open':fmt(f);$('hpV').textContent=state.hp<5?'Off':fmt(h);redrawCurve();}
 $('lp').value=state.lp;$('hp').value=state.hp;
 $('lp').oninput=e=>{state.lp=+e.target.value;store.set('lp',state.lp);applyFilters()};
