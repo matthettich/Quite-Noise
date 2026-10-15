@@ -69,6 +69,7 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 </head>
 <body>
 <audio id="keep" loop playsinline hidden></audio>
+<audio id="out" playsinline hidden></audio>
 <div class="wrap">
   <h1><span class="a">Quite</span> <span class="b">Noise</span></h1>
 
@@ -184,8 +185,17 @@ const soft=ctx.createWaveShaper();soft.curve=(()=>{const n=4097,c=new Float32Arr
   for(let i=0;i<n;i++){const x=(i/(n-1)*2-1)*2,a=Math.abs(x);
     c[i]=Math.sign(x)*(a<=t?a:t+(top-t)*Math.tanh((a-t)/(top-t)))}return c})();
 [hp,lp1,lp2,...eqs,master,pre,soft].reduce((a,b)=>(a.connect(b),b));
-soft.connect(ctx.destination);master.connect(an);
-let src=null,playing=false,ready=null;
+master.connect(an);
+// The noise plays out through a real <audio> element (fed live from the graph) instead of straight from Web Audio.
+// To Android that's ordinary media playback, like a music app: it gets audio focus and the lock screen controls,
+// and the page isn't frozen when the screen locks or you switch apps. The old trick (a silent looping track next
+// to Web Audio) stopped working after a Samsung/Chrome update, and Web Audio on its own could get starved by
+// power saving, which is heard as dips. If a browser can't do this, it falls back to the old way.
+const out=$('out');let viaElement=false;
+if(ctx.createMediaStreamDestination&&'srcObject'in out){const sd=ctx.createMediaStreamDestination();soft.connect(sd);out.srcObject=sd.stream;viaElement=true}
+else soft.connect(ctx.destination);
+function fallbackOut(){if(!viaElement)return;viaElement=false;try{soft.disconnect()}catch(e){}soft.connect(ctx.destination);out.srcObject=null}
+let src=null,playing=false,ready=null,ourPause=false;
 
 async function ensureSource(){
   if(src)return;
@@ -195,7 +205,7 @@ async function ensureSource(){
   src.port.postMessage(state.type);src.connect(hp);
 }
 
-// A silent looping track tells Android this page is playing media, so it keeps running with the screen locked.
+// Fallback only: a silent looping track so Android treats the page as playing media.
 const keep=$('keep');
 (function(){const sr=8000,len=sr*2,b=new ArrayBuffer(44+len*2),v=new DataView(b),w=(o,s)=>[...s].forEach((ch,i)=>v.setUint8(o+i,ch.charCodeAt(0)));
   w(0,'RIFF');v.setUint32(4,36+len*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
@@ -266,15 +276,22 @@ let fading=false;
 const ICON_PLAY='<polygon points="9,5 23,14 9,23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 const ICON_PAUSE='<rect x="7" y="6" width="5" height="16" fill="none" stroke="currentColor" stroke-width="2"/><rect x="16" y="6" width="5" height="16" fill="none" stroke="currentColor" stroke-width="2"/>';
 async function start(){
+  // Start the output element first, while we still have the tap that started playback
+  const outP=viaElement?out.play():null;
   try{await ctx.resume();await ensureSource()}catch(e){$('note').textContent='Audio could not start in this browser. Try Chrome or reload the page.';return}
-  keep.play().catch(()=>{});
+  if(outP)try{await outP}catch(e){fallbackOut()}
+  if(!viaElement)keep.play().catch(()=>{});
   playing=true;fading=false;const now=ctx.currentTime;master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value,now);master.gain.linearRampToValueAtTime(volGain(),now+2);
   ui();animate(true);if(timerMin)armTimer();
 }
 function stop(fadeSec=.8){playing=false;const now=ctx.currentTime;master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value,now);master.gain.linearRampToValueAtTime(0,now+fadeSec);
-  setTimeout(()=>{if(!playing){ctx.suspend();keep.pause()}},fadeSec*1000+100);clearTimer(false);ui();animate(false);draw();}
+  setTimeout(()=>{if(!playing){ctx.suspend();keep.pause();ourPause=true;out.pause()}},fadeSec*1000+100);clearTimer(false);ui();animate(false);draw();}
+// If Android pauses the sound itself (a call, another app taking over audio), show it as paused here too.
+out.addEventListener('pause',()=>{if(ourPause){ourPause=false;return}if(playing&&viaElement)stop(.05)});
+// Coming back to the app: if anything got suspended while it was in the background, pick it back up.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&playing){if(ctx.state!=='running')ctx.resume();if(viaElement&&out.paused)out.play().catch(()=>{})}});
 function ui(){$('playIcon').innerHTML=playing?ICON_PAUSE:ICON_PLAY;$('play').setAttribute('aria-label',playing?'Pause':'Play');$('play').dataset.on=playing;
   if('mediaSession'in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';}
 $('play').onclick=()=>playing?stop():start();
