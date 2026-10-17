@@ -129,7 +129,7 @@ const store={get(k,d){try{const v=localStorage.getItem('qn.'+k);return v===null?
              set(k,v){try{localStorage.setItem('qn.'+k,JSON.stringify(v))}catch(e){}}};
 
 const BANDS=[{f:60,t:'lowshelf',l:'60'},{f:250,t:'peaking',l:'250'},{f:1000,t:'peaking',l:'1k'},{f:4000,t:'peaking',l:'4k'},{f:12000,t:'highshelf',l:'12k'}];
-const lpHz=v=>100*Math.pow(200,v/1000), hpHz=v=>20*Math.pow(30,v/1000);
+const lpHz=v=>100*Math.pow(200,v/1000), hpHz=v=>100*Math.pow(8,v/1000);   // low cut slider: 100 Hz – 800 Hz
 const fmt=f=>f>=1000?(f/1000).toFixed(f>=10000?0:1)+' kHz':Math.round(f)+' Hz';
 
 const ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback'});
@@ -242,7 +242,9 @@ const volGain=()=>Math.pow(state.vol/100,2)*.9;
 function applyVol(){$('volV').textContent=state.vol+'%';if(playing&&!fading)master.gain.setTargetAtTime(volGain(),ctx.currentTime,.05)}
 $('vol').value=state.vol;$('vol').oninput=e=>{state.vol=+e.target.value;store.set('vol',state.vol);applyVol()};
 function applyFilters(){const f=lpHz(state.lp),h=hpHz(state.hp);
-  setP(lp1.frequency,f);setP(lp2.frequency,f);setP(hp.frequency,state.hp<5?18:h);/* "Off" still trims the inaudible rumble under 20 Hz, which only eats headroom and makes phone speakers duck */
+  setP(lp1.frequency,f);setP(lp2.frequency,f);setP(hp.frequency,state.hp<5?100:h);
+  /* "Off" still cuts below 100 Hz: a phone speaker can't reproduce it, and in brown and deep red it is where the peaks
+     that reached the soft clip at full volume came from (brown 0.77 -> 0.63, deep 0.77 -> 0.53 against a 0.7 clip point) */
   $('lpV').textContent=state.lp>=995?'Open':fmt(f);$('hpV').textContent=state.hp<5?'Off':fmt(h);redrawCurve();}
 $('lp').value=state.lp;$('hp').value=state.hp;
 $('lp').oninput=e=>{state.lp=+e.target.value;store.set('lp',state.lp);applyFilters()};
