@@ -54,7 +54,7 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 .eq{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;justify-items:center}
 .band{display:flex;flex-direction:column;align-items:center;gap:6px}
 .band input{writing-mode:vertical-lr;direction:rtl;width:28px;height:150px}
-.band .v{font-variant-numeric:tabular-nums;font-size:13px;border:1px solid var(--rule);background:var(--white);min-width:38px;text-align:center;padding:1px 3px}
+.band .v{font-variant-numeric:tabular-nums;font-size:13px;border:1px solid var(--rule);background:var(--white);min-width:44px;text-align:center;padding:4px 3px;cursor:pointer;user-select:none;-webkit-user-select:none}
 .band .f{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.06em}
 .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border:1px solid var(--rule);background:var(--rule)}
 .chip{min-height:42px;border:0;background:var(--white);padding:6px 8px;font-size:15px;cursor:pointer;white-space:nowrap}
@@ -144,7 +144,7 @@ const an=ctx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=.85;
 // This soft clip leaves everything below 70% untouched and rounds off only those rare peaks, so the phone never has to.
 // A WaveShaper only reads -1..1, so the signal is halved first and the curve is drawn for a -2..2 input.
 const pre=ctx.createGain();pre.gain.value=.5;
-const soft=ctx.createWaveShaper();soft.curve=(()=>{const n=4097,c=new Float32Array(n),t=.7,top=.98;
+const soft=ctx.createWaveShaper();soft.oversample='2x';soft.curve=(()=>{const n=4097,c=new Float32Array(n),t=.7,top=.98;
   for(let i=0;i<n;i++){const x=(i/(n-1)*2-1)*2,a=Math.abs(x);
     c[i]=Math.sign(x)*(a<=t?a:t+(top-t)*Math.tanh((a-t)/(top-t)))}return c})();
 [hp,lp1,lp2,...eqs,master,pre,soft].reduce((a,b)=>(a.connect(b),b));
@@ -159,7 +159,7 @@ let playing=false,ourPause=false;
 // Fresh random noise is made in 5-second pieces and lined up back to back ahead of time, so the sound never repeats.
 // If the phone ever stalls the page long enough for the queue to run dry, the last piece repeats until it catches up;
 // it never goes silent. The colors (pink, brown...) are shaped from that white noise with the same math as before.
-let CHUNK=5,LEAD=30;
+let CHUNK=5,LEAD=90;   // 90 s queued ahead: enough to ride out Android pausing the page for a while
 const gn=(c,v)=>{const g=c.createGain();g.gain.value=v;return g};
 function buildType(type,c){const inW=gn(c,1),inD=gn(c,1),out=gn(c,1),g={type,inW,inD,out,oceanB:null,oceanP:null};
   const to=(node,v)=>{const x=gn(c,v);node.connect(x);x.connect(out);return x};
@@ -171,18 +171,19 @@ function buildType(type,c){const inW=gn(c,1),inD=gn(c,1),out=gn(c,1),g={type,inW
   switch(type){
     case'white':to(inW,.35);break;
     case'brown':to(brownOf(),3.5);break;
-    case'deep':{const d=c.createIIRFilter([.02],[1,-.98]);brownOf().connect(d);to(d,3.5*1.9);break}
+    case'deep':{const d=c.createIIRFilter([.02],[1,-.98]);brownOf().connect(d);to(d,3.5*1.6);break}   // was 1.9: its peaks reached the soft clip at full volume
     case'grey':{to(brownOf(),3.5*.75);to(pinkOf(),.35);const h=c.createIIRFilter([.75,-.75],[1,-.75]);inW.connect(h);to(h,.12);break}
     case'blue':{const d=c.createIIRFilter([1.5,-1.5],[1]);pinkOf().connect(d);d.connect(out);break}
     case'violet':{const d=c.createIIRFilter([.22,-.22],[1]);inW.connect(d);d.connect(out);break}
-    case'ocean':g.oceanB=to(brownOf(),3.5*.22);g.oceanP=to(pinkOf(),.25*.22*.22);break;
+    case'ocean':g.oceanB=to(brownOf(),OC*3.5*.22);g.oceanP=to(pinkOf(),OC*.25*.22*.22);break;
     case'rain':to(pinkOf(),.55);inD.connect(out);break;
     default:to(pinkOf(),.9);}
   return g;}
 // Ocean: slow uneven swells of 6–14 seconds, drawn as volume curves and queued ahead like the noise itself
+const OC=.85;   // overall ocean level (was 1): the crest of a big wave reached the soft clip at full volume
 function oceanWaves(g,until){while(g.oceanAt<until){const per=6+Math.random()*8,peak=.45+Math.random()*.55,n=Math.ceil(per*25),
     b=new Float32Array(n),p=new Float32Array(n);
-  for(let i=0;i<n;i++){const x=Math.sin(Math.PI*i/(n-1)),env=.22+peak*x*x*x*(2-x);b[i]=3.5*env;p[i]=.25*env*env}
+  for(let i=0;i<n;i++){const x=Math.sin(Math.PI*i/(n-1)),env=.22+peak*x*x*x*(2-x);b[i]=OC*3.5*env;p[i]=OC*.25*env*env}
   try{g.oceanB.gain.setValueCurveAtTime(b,g.oceanAt,per);g.oceanP.gain.setValueCurveAtTime(p,g.oceanAt,per)}catch(e){}
   g.oceanAt+=per}}
 // Rain: soft droplets scattered at random (about 14 a second), made alongside each piece of noise
@@ -223,7 +224,11 @@ const keep=$('keep');
   for(let i=0;i<len;i++){const fade=Math.min(1,i/400,(len-i)/400);v.setInt16(44+i*2,Math.round((Math.random()*2-1)*55*fade),true)}
   keep.src=URL.createObjectURL(new Blob([b],{type:'audio/wav'}));keep.volume=1;})();
 
-const state={type:store.get('type','pink'),vol:store.get('vol',50),lp:store.get('lp',700),hp:store.get('hp',0),eq:store.get('eq',[0,0,0,0,0])};
+// Saved settings are checked before use: a bad value in storage used to throw here and stop the rest of the script
+const num=(v,d,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.min(hi,Math.max(lo,v)):d;
+const savedEq=store.get('eq',null);
+const state={type:store.get('type','pink'),vol:num(store.get('vol',50),50,0,100),lp:num(store.get('lp',700),700,0,1000),hp:num(store.get('hp',0),0,0,1000),
+  eq:BANDS.map((_,i)=>num(Array.isArray(savedEq)?savedEq[i]:0,0,-12,12))};
 
 TYPES.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;$('type').append(o)});
 function setType(id){const t=TYPES.find(x=>x.id===id)||TYPES[1];state.type=t.id;store.set('type',t.id);$('type').value=t.id;
@@ -247,8 +252,8 @@ BANDS.forEach((b,i)=>{const d=document.createElement('div');d.className='band';
   d.innerHTML=`<span class="v" id="eqv${i}"></span><input type="range" id="eq${i}" min="-12" max="12" step="0.5" aria-label="${b.l} Hz"><span class="f">${b.l}</span>`;
   $('eq').append(d);const inp=d.querySelector('input');inp.value=state.eq[i];
   inp.oninput=()=>{state.eq[i]=+inp.value;store.set('eq',state.eq);applyEq()};
-  // Double tap a band (slider or its number) to reset it to 0
-  let lastTap=0;d.addEventListener('pointerup',()=>{const now=Date.now();
+  // Double tap a band's number to reset it to 0 (not the slider itself: two quick nudges on the fader used to reset it)
+  let lastTap=0;d.querySelector('.v').addEventListener('pointerup',()=>{const now=Date.now();
     if(now-lastTap<320){inp.value=0;state.eq[i]=0;store.set('eq',state.eq);applyEq();lastTap=0}else lastTap=now});});
 function applyEq(){eqs.forEach((f,i)=>{setP(f.gain,state.eq[i]);
   const v=state.eq[i];$('eqv'+i).textContent=(v>0?'+':'')+v;});redrawCurve();}
@@ -286,17 +291,20 @@ addEventListener('resize',draw);
 let fading=false;
 const ICON_PLAY='<polygon points="9,5 23,14 9,23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 const ICON_PAUSE='<rect x="7" y="6" width="5" height="16" fill="none" stroke="currentColor" stroke-width="2"/><rect x="16" y="6" width="5" height="16" fill="none" stroke="currentColor" stroke-width="2"/>';
+let starting=false;
 async function start(){
+  if(playing||starting)return;   // a second Play (double tap, or a lock screen / headset "play" command) must not restart the noise
+  starting=true;
   // Start the keep-alive track first, while we still have the tap that started playback
   keep.play().catch(()=>{});
-  try{await ctx.resume()}catch(e){$('note').textContent='Audio could not start in this browser. Try Chrome or reload the page.';return}
-  playing=true;fading=false;const now=ctx.currentTime;begin(now+.05);master.gain.cancelScheduledValues(now);
+  try{await ctx.resume()}catch(e){starting=false;$('note').textContent='Audio could not start in this browser. Try Chrome or reload the page.';return}
+  starting=false;playing=true;fading=false;const now=ctx.currentTime;begin(now+.05);master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value,now);master.gain.linearRampToValueAtTime(volGain(),now+2);
   ui();animate(true);if(timerMin)armTimer();
 }
 function stop(fadeSec=.8){playing=false;const now=ctx.currentTime;master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value,now);master.gain.linearRampToValueAtTime(0,now+fadeSec);
-  setTimeout(()=>{if(!playing){clearInterval(pumpT);pumpT=null;halt(ctx.currentTime);ctx.suspend();ourPause=true;keep.pause()}},fadeSec*1000+100);clearTimer(false);ui();animate(false);draw();}
+  setTimeout(()=>{if(!playing){clearInterval(pumpT);pumpT=null;halt(ctx.currentTime);ctx.suspend();if(!keep.paused){ourPause=true;keep.pause()}}},fadeSec*1000+100);clearTimer(false);ui();animate(false);draw();}
 // If Android pauses the sound itself (a call, another app taking over audio), show it as paused here too.
 keep.addEventListener('pause',()=>{if(ourPause){ourPause=false;return}if(playing)stop(.05)});
 // Coming back to the app: if anything got suspended while it was in the background, pick it back up.
