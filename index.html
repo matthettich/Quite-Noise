@@ -133,6 +133,10 @@ const lpHz=v=>100*Math.pow(200,v/1000), hpHz=v=>100*Math.pow(8,v/1000);   // low
 const fmt=f=>f>=1000?(f/1000).toFixed(f>=10000?0:1)+' kHz':Math.round(f)+' Hz';
 
 const ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback'});
+// Battery: an installed app may start audio without a tap, so this context could start out running, rendering silence
+// for as long as the app stays open, even if nothing is ever played (measured: about 40% of the CPU of actually playing).
+// It sleeps until Play.
+if(ctx.state==='running')ctx.suspend();
 const hp=ctx.createBiquadFilter();hp.type='highpass';hp.Q.value=-3.01;
 const lp1=ctx.createBiquadFilter();lp1.type='lowpass';lp1.Q.value=-5.33;
 const lp2=ctx.createBiquadFilter();lp2.type='lowpass';lp2.Q.value=2.33;
@@ -144,7 +148,9 @@ const an=ctx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=.85;
 // This soft clip leaves everything below 70% untouched and rounds off only those rare peaks, so the phone never has to.
 // A WaveShaper only reads -1..1, so the signal is halved first and the curve is drawn for a -2..2 input.
 const pre=ctx.createGain();pre.gain.value=.5;
-const soft=ctx.createWaveShaper();soft.oversample='2x';soft.curve=(()=>{const n=4097,c=new Float32Array(n),t=.7,top=.98;
+// No oversampling: the curve only touches rare peaks, and any aliasing it makes is noise inside noise.
+// 2x oversampling cost about 15% of the app's CPU while playing, all night long.
+const soft=ctx.createWaveShaper();soft.oversample='none';soft.curve=(()=>{const n=4097,c=new Float32Array(n),t=.7,top=.98;
   for(let i=0;i<n;i++){const x=(i/(n-1)*2-1)*2,a=Math.abs(x);
     c[i]=Math.sign(x)*(a<=t?a:t+(top-t)*Math.tanh((a-t)/(top-t)))}return c})();
 [hp,lp1,lp2,...eqs,master,pre,soft].reduce((a,b)=>(a.connect(b),b));
@@ -205,13 +211,16 @@ function piece(frames){const sr=ctx.sampleRate,t=nextF/sr,w=ctx.createBuffer(2,f
   const item={srcs};q.push(item);srcs[0].onended=()=>{const i=q.indexOf(item);if(i>=0)q.splice(i,1)};nextF+=frames}
 function pump(){if(!eng||ctx.state!=='running')return;const sr=ctx.sampleRate,now=ctx.currentTime;
   if(nextF/sr<now+.05)nextF=Math.ceil((now+.1)*sr);   // fell behind (page was stalled): pick up with fresh noise
-  for(let n=0;n<3&&nextF/sr<now+LEAD;n++)piece(Math.round(CHUNK*sr));
+  for(let n=0;n<8&&nextF/sr<now+LEAD;n++)piece(Math.round(CHUNK*sr));
   if(eng.oceanB){if(eng.oceanAt<now+.05)eng.oceanAt=now+.1;oceanWaves(eng,now+LEAD)}}
 function halt(T){q.forEach(it=>it.srcs.forEach(s=>{try{s.stop(T)}catch(e){}}));q=[];
   const old=eng;eng=null;if(old)setTimeout(()=>{try{old.out.disconnect()}catch(e){}},Math.max(0,T-ctx.currentTime)*1000+400)}
 function begin(T){halt(T);eng=buildType(state.type,ctx);eng.out.connect(hp);eng.oceanAt=T;
   nextF=Math.ceil(T*ctx.sampleRate);piece(ctx.sampleRate);pump();   // a short first piece so sound starts right away
-  clearInterval(pumpT);pumpT=setInterval(pump,1000)}
+  pumpEvery()}
+// Battery: topping up the 90 s queue every second woke the phone 3,600 times an hour all night. On screen it tops up
+// every 2 s; with the screen off or another app in front, every 15 s (up to 40 s of noise at a time), still 50 s ahead.
+function pumpEvery(){clearInterval(pumpT);pumpT=eng?setInterval(pump,document.hidden?15000:2000):null}
 
 // A looping keep-alive track tells Android this page is playing media, so it shows the lock screen controls and
 // keeps running with the screen locked or in another app. Android ignores media shorter than about 5 seconds and
@@ -310,7 +319,8 @@ function stop(fadeSec=.8){playing=false;const now=ctx.currentTime;master.gain.ca
 // If Android pauses the sound itself (a call, another app taking over audio), show it as paused here too.
 keep.addEventListener('pause',()=>{if(ourPause){ourPause=false;return}if(playing)stop(.05)});
 // Coming back to the app: if anything got suspended while it was in the background, pick it back up.
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&playing){(ctx.state!=='running'?ctx.resume():Promise.resolve()).then(pump);if(keep.paused)keep.play().catch(()=>{})}});
+document.addEventListener('visibilitychange',()=>{if(playing){pumpEvery();if(tick)tickEvery()}
+  if(!document.hidden&&playing){(ctx.state!=='running'?ctx.resume():Promise.resolve()).then(pump);if(keep.paused)keep.play().catch(()=>{})}});
 function ui(){$('playIcon').innerHTML=playing?ICON_PAUSE:ICON_PLAY;$('play').setAttribute('aria-label',playing?'Pause':'Play');$('play').dataset.on=playing;
   if('mediaSession'in navigator)navigator.mediaSession.playbackState=playing?'playing':'paused';}
 $('play').onclick=()=>playing?stop():start();
@@ -327,7 +337,9 @@ function showTimer(){$('timerV').textContent=timerMin?optLabel(timerMin)+' after
 function clearTimer(restore){clearInterval(tick);tick=null;endAt=0;
   if(fading&&restore&&playing){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setTargetAtTime(volGain(),ctx.currentTime,.3)}
   fading=false;showTimer()}
-function armTimer(){clearTimer(true);endAt=Date.now()+timerMin*60000;tick=setInterval(step,1000);step()}
+function armTimer(){clearTimer(true);endAt=Date.now()+timerMin*60000;tickEvery();step()}
+// The countdown ticks every second on screen; with the screen off every 15 s (the fade itself runs on the audio clock)
+function tickEvery(){clearInterval(tick);tick=setInterval(step,document.hidden?15000:1000)}
 function step(){const left=Math.max(0,endAt-Date.now()),s=Math.ceil(left/1000);
   $('timerV').textContent=`Stops in ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   if(left<=60000&&!fading){fading=true;const now=ctx.currentTime;master.gain.cancelScheduledValues(now);
